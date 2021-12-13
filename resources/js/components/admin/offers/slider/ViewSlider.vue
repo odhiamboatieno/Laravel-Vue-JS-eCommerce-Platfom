@@ -1,0 +1,230 @@
+<template>
+   <div class="row">
+    <div class="col-lg-12" >
+        <div class="ibox animated fadeInRightBig">
+            <div class="ibox-title">
+                <h5>Slider List</h5>
+                <div class="ibox-tools">
+                    <a class="collapse-link">
+                        <i class="fa fa-chevron-up"></i>
+                    </a>
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        <i class="fa fa-wrench"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-user">
+                        <li><a href="#" class="dropdown-item">Config option 1</a>
+                        </li>
+                        <li><a href="#" class="dropdown-item">Config option 2</a>
+                        </li>
+                    </ul>
+                    <a class="close-link">
+                        <i class="fa fa-times"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="ibox-content">
+                <div class="row">
+                    <div class="col-sm-5 m-b-xs">
+
+                    </div>
+                    <div class="col-sm-4 m-b-xs">
+                     
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="input-group">
+                            <input placeholder="Search By Name" type="text" class="form-control form-control-sm" 
+                            v-model="keyword"
+                            @keyup="getSlider()"> 
+                            <span class="input-group-append">
+                                  <!--    <button type="button" class="btn btn-sm btn-primary">Go!
+                                  </button> -->
+                              </span></div>
+
+                          </div>
+                      </div>
+                      <div class="table-responsive" style="margin-top: 15px;" v-if="!isLoading">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Image</th>
+                                    <th>Back URL</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(value,index) in sliders.data" :key="index">
+                                    <td>{{ value.title }}</td>
+                                    <td><img v-lazy="value.banner" style="max-height: 100px; text-align: center;"></td>
+                                    <td>{{ value.back_url }}</td>
+                                    <td><div class="switch">
+                                        <div class="onoffswitch">
+                                            <input @change="sliderStatus(value.id)" type="checkbox" :checked="value.status == 1 ? true : false" class="onoffswitch-checkbox" :id="value.id">
+                                            <label class="onoffswitch-label" :for="value.id">
+                                                <span class="onoffswitch-inner"></span>
+                                                <span class="onoffswitch-switch"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a @click.prevent="edit(value.id)" class="btn btn-primary" href="#"><i class="fa fa-edit" title="Edit"></i></a> 
+                                    <a @click.prevent="deleteSlider(value.id)" class="btn btn-danger" href="#"><i class="fa fa-trash" title="Delete"></i></a>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="col-md-12 text-center" v-else>
+                    <img :src="url+'images/loading.gif'">
+                </div>
+
+            </div>
+        </div>
+
+        <div class="ibox animated fadeInRightBig">
+         <pagination v-if="sliders.meta" :pageData="sliders.meta"></pagination> 
+     </div>
+
+     <div class="ibox">
+        <update-slider></update-slider>
+    </div>
+</div>
+
+</div>
+</template>
+
+<script>
+
+    import { EventBus } from  '../../../../vue-assets';
+
+    import Mixin from  '../../../../mixin';
+
+    import Pagination from  '../../pagination/Pagination';
+
+    import UpdateSlider from './EditSlider';
+    
+    export default {
+
+        mixins : [Mixin],
+
+        components : {
+           
+           'pagination' : Pagination,
+            UpdateSlider,
+
+       },
+
+       data(){
+           
+           return {
+            
+            sliders : [],
+
+            isLoading : false,
+
+            keyword : '',
+
+            url : base_url,
+
+        }
+
+    },
+
+    mounted(){
+
+
+        // this  will not work in eventBus that why 
+        // we are initializing with _this
+
+        var _this = this;
+
+        _this.getSlider();
+
+        EventBus.$on('slider-created',function(){
+
+        // getting updated data when insert update delete happend 
+
+        _this.getSlider();
+
+
+    });
+
+
+
+    },
+
+    methods : {
+     
+
+        getSlider(page = 1){
+
+         this.isLoading = true;
+         
+         axios.get(base_url+'admin/slider-list?page='+page+'&keyword='+this.keyword)
+         .then(response => {
+             
+             this.sliders = response.data;
+             this.isLoading = false;
+
+         });
+
+     },
+
+     pageClicked(pageNo){
+        var vm = this;
+        vm.getSlider(pageNo);
+    },
+
+        // edit slider 
+
+        edit(id){
+            // alert(id)
+            EventBus.$emit('update-slider',id);
+        },
+
+        // delete slider 
+
+        deleteSlider(id){
+            Swal.fire({
+                title: 'Are you sure ?',
+                text: "You won't be able to revert this!",
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            },() => {
+
+            }).then((result) => {
+                if (result.value) {
+
+                    axios.delete(base_url+'admin/slider/'+id)
+                    .then(res => {
+
+                        this.successMessage(res.data);
+                        this.getSlider();
+                    })
+                }
+            }) 
+
+        },
+
+        sliderStatus(id)
+        {
+            axios.get(base_url+'admin/slider-status/'+id)
+            .then(res => {
+                this.successMessage(res.data);
+            });
+        }
+
+
+
+    }
+
+}
+
+</script>
